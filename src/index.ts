@@ -130,7 +130,8 @@ export = (app: Application) => {
   ], async context => {
     const branches = context.payload.branches as { name: string }[]
     const validBranches = branches.filter(branch => branch.name !== 'master')
-    app.log.debug('getAssociatedPullRequests')
+    app.log.debug('getAssociatedPullRequests', branches)
+    app.log.debug('valid branches: ', validBranches)
     const pullRequestResponses = await Promise.all(validBranches.map(branch =>
       getAssociatedPullRequests(context.github, {
         owner: context.payload.repository.owner.login,
