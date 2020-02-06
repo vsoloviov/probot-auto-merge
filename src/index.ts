@@ -140,6 +140,7 @@ export = (app: Application) => {
     ))
 
     const pullRequests = flatten(pullRequestResponses)
+    app.log.debug('Found pull requests: ', pullRequests)
     await Promise.all(pullRequests.map(pullRequest => {
       const repositoryReference = {
         owner: pullRequest.owner,
