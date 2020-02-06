@@ -95,20 +95,18 @@ export = (app: Application) => {
 
   async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, branchName }: { owner: String, repo: string, branchName: string }): Promise<{ owner: string, repo: string, number: number }[]> {
     const result = await rawGraphQLQuery(github, `
-      query($owner: String!, $repo: String!, $refQualifiedName: String!) {
+      query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
-          ref(qualifiedName: $refQualifiedName) {
-            associatedPullRequests(first: 10) {
-              nodes {
-                number
-                repository {
-                  name
-                  owner {
-                    login
-                  }
+          pullRequests(first: 10, labels: ["automatic"], states: OPEN) {
+            nodes {
+              number
+              repository {
+                name
+                owner {
+                  login
                 }
               }
-            }
+             }
           }
         }
       }
