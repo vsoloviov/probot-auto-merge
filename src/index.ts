@@ -128,6 +128,8 @@ export = (app: Application) => {
   app.on([
     'status'
   ], async context => {
+    app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
+    app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
     const validBranches = branches.filter(branch => branch.name !== 'master')
     app.log.debug('getAssociatedPullRequests', branches)
