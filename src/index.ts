@@ -112,9 +112,10 @@ export = (app: Application) => {
       }
     `, {
       owner: owner,
-      repo: repo,
-      refQualifiedName: `refs/heads/${branchName}`
+      repo: repo
     }, {})
+    app.log.debug('Result:::::::::::::::::')
+    app.log.debug(result)
     if (!result.data) { return [] }
     return result.data.repository.ref.associatedPullRequests.nodes.map((node: any) => ({
       number: node.number,
@@ -127,6 +128,7 @@ export = (app: Application) => {
     'status'
   ], async context => {
     app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
+    app.log.debug('version: 1.1.1')
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
     const validBranches = branches.filter(branch => branch.name !== 'master')
