@@ -93,26 +93,28 @@ export = (app: Application) => {
     })
   }
 
-  async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, branchName }: { owner: String, repo: string, branchName: string }): Promise<{ owner: string, repo: string, number: number }[]> {
+  async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, sha }: { owner: String, repo: string, sha: string }): Promise<{ owner: string, repo: string, number: number }[]> {
+    app.log.debug('Querying results...............')
     const result = await rawGraphQLQuery(github, `
-      query($owner: String!, $repo: String!) {
+      query($owner: String!, $repo: String!, $sha: String!) {
         repository(owner: $owner, name: $repo) {
-          pullRequests(first: 10, labels: ["automatic"], states: OPEN) {
-            nodes {
-              number
-              repository {
-                name
-                owner {
-                  login
+          object(oid: $sha) {
+            ... on Commit {
+              associatedPullRequests(first: 10) {
+                edges {
+                  node {
+                    number
+                  }
                 }
               }
-             }
+            }
           }
         }
       }
     `, {
       owner: owner,
-      repo: repo
+      repo: repo,
+      sha: sha
     }, {})
     app.log.debug('Result:::::::::::::::::')
     app.log.debug(result)
@@ -128,17 +130,19 @@ export = (app: Application) => {
     'status'
   ], async context => {
     app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
-    app.log.debug('version: 1.1.1')
+    app.log.debug('version: 1.1.2')
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
+    const sha = context.payload.sha as { name: string }[]
     const validBranches = branches.filter(branch => branch.name !== 'master')
     app.log.debug('getAssociatedPullRequests', branches)
     app.log.debug('valid branches: ', validBranches)
-    const pullRequestResponses = await Promise.all(validBranches.map(branch =>
+
+    const pullRequestResponses = await Promise.all(sha.map(shaId =>
       getAssociatedPullRequests(context.github, {
         owner: context.payload.repository.owner.login,
         repo: context.payload.repository.name,
-        branchName: branch.name
+        sha: shaId.name
       })
     ))
 
