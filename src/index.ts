@@ -94,6 +94,7 @@ export = (app: Application) => {
   }
 
   async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, branchName }: { owner: String, repo: string, branchName: string }): Promise<{ owner: string, repo: string, number: number }[]> {
+    app.log.debug('Querying results from branch...............')
     const result = await rawGraphQLQuery(github, `
       query($owner: String!, $repo: String!, $refQualifiedName: String!) {
         repository(owner: $owner, name: $repo) {
@@ -126,7 +127,7 @@ export = (app: Application) => {
   }
 
   async function getAssociatedPullRequestsFork (github: GitHubAPI, { owner, repo, sha }: { owner: String, repo: string, sha: string }): Promise<{ owner: string, repo: string, number: number }[]> {
-    app.log.debug('Querying results fork...............')
+    app.log.debug('Querying results from fork...............')
     const result = await rawGraphQLQuery(github, `
       query($owner: String!, $repo: String!, $sha: GitObjectID!) {
         repository(owner: $owner, name: $repo) {
@@ -152,8 +153,6 @@ export = (app: Application) => {
       repo: repo,
       sha: sha
     }, {})
-    app.log.debug('Result:::::::::::::::::')
-    app.log.debug(result)
     if (!result.data) { return [] }
     return result.data.repository.object.associatedPullRequests.nodes.map((node: any) => ({
       number: node.number,
@@ -165,15 +164,12 @@ export = (app: Application) => {
   app.on([
     'status'
   ], async context => {
-    app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
-    app.log.debug('version: 1.1.4')
+    app.log.debug("Payload content:")
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
     const sha = context.payload.sha as string
     const validBranches = branches.filter(branch => branch.name !== 'master')
     const iter = [1]
-    app.log.debug('all branches:', branches)
-    app.log.debug('valid branches: ', validBranches)
 
     if (Object(validBranches).length === 0) {
       const pullRequestResponses = await Promise.all(iter.map(i =>
@@ -185,13 +181,11 @@ export = (app: Application) => {
       ))
 
       const pullRequests = flatten(pullRequestResponses)
-      app.log.debug('Found pull requests: ', pullRequests)
       await Promise.all(pullRequests.map(pullRequest => {
         const repositoryReference = {
           owner: pullRequest.owner,
           repo: pullRequest.repo
         }
-        app.log.debug('handlePullRequests')
         return handlePullRequests(app, context, context.payload.installation.id, repositoryReference, [pullRequest.number])
       }))
     } else {
@@ -204,13 +198,11 @@ export = (app: Application) => {
       ))
 
       const pullRequests = flatten(pullRequestResponses)
-      app.log.debug('Found pull requests: ', pullRequests)
       await Promise.all(pullRequests.map(pullRequest => {
         const repositoryReference = {
           owner: pullRequest.owner,
           repo: pullRequest.repo
         }
-        app.log.debug('handlePullRequests')
         return handlePullRequests(app, context, context.payload.installation.id, repositoryReference, [pullRequest.number])
       }))
     }
