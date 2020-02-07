@@ -93,17 +93,53 @@ export = (app: Application) => {
     })
   }
 
-  async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, sha }: { owner: String, repo: string, sha: string }): Promise<{ owner: string, repo: string, number: number }[]> {
-    app.log.debug('Querying results...............')
+  async function getAssociatedPullRequests (github: GitHubAPI, { owner, repo, branchName }: { owner: String, repo: string, branchName: string }): Promise<{ owner: string, repo: string, number: number }[]> {
+    const result = await rawGraphQLQuery(github, `
+      query($owner: String!, $repo: String!, $refQualifiedName: String!) {
+        repository(owner: $owner, name: $repo) {
+          ref(qualifiedName: $refQualifiedName) {
+            associatedPullRequests(first: 10) {
+              nodes {
+                number
+                repository {
+                  name
+                  owner {
+                    login
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `, {
+      owner: owner,
+      repo: repo,
+      refQualifiedName: `refs/heads/${branchName}`
+    }, {})
+    if (!result.data) { return [] }
+    return result.data.repository.ref.associatedPullRequests.nodes.map((node: any) => ({
+      number: node.number,
+      repo: node.repository.name,
+      owner: node.repository.owner.login
+    }))
+  }
+
+  async function getAssociatedPullRequestsFork (github: GitHubAPI, { owner, repo, sha }: { owner: String, repo: string, sha: string }): Promise<{ owner: string, repo: string, number: number }[]> {
+    app.log.debug('Querying results fork...............')
     const result = await rawGraphQLQuery(github, `
       query($owner: String!, $repo: String!, $sha: String!) {
         repository(owner: $owner, name: $repo) {
           object(oid: $sha) {
             ... on Commit {
               associatedPullRequests(first: 10) {
-                edges {
-                  node {
-                    number
+                nodes {
+                  number
+                  repository {
+                    name
+                    owner {
+                      login
+                    }
                   }
                 }
               }
@@ -133,29 +169,49 @@ export = (app: Application) => {
     app.log.debug('version: 1.1.2')
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
-    const sha = context.payload.sha as { name: string }[]
+    const sha = context.payload.sha as string
     const validBranches = branches.filter(branch => branch.name !== 'master')
     app.log.debug('getAssociatedPullRequests', branches)
     app.log.debug('valid branches: ', validBranches)
 
-    const pullRequestResponses = await Promise.all(sha.map(shaId =>
-      getAssociatedPullRequests(context.github, {
-        owner: context.payload.repository.owner.login,
+    if (Object(validBranches).length === 0) {
+      const pullRequestResponses = getAssociatedPullRequestsFork(context.github, {
+        owner: context.payload.commit.author.login,
         repo: context.payload.repository.name,
-        sha: shaId.name
+        sha: sha
       })
-    ))
 
-    const pullRequests = flatten(pullRequestResponses)
-    app.log.debug('Found pull requests: ', pullRequests)
-    await Promise.all(pullRequests.map(pullRequest => {
-      const repositoryReference = {
-        owner: pullRequest.owner,
-        repo: pullRequest.repo
-      }
-      app.log.debug('handlePullRequests')
-      return handlePullRequests(app, context, context.payload.installation.id, repositoryReference, [pullRequest.number])
-    }))
+      const pullRequests = flatten(pullRequestResponses)
+      app.log.debug('Found pull requests: ', pullRequests)
+      await Promise.all(pullRequests.map(pullRequest => {
+        const repositoryReference = {
+          owner: pullRequest.owner,
+          repo: pullRequest.repo
+        }
+        app.log.debug('handlePullRequests')
+        return handlePullRequests(app, context, context.payload.installation.id, repositoryReference, [pullRequest.number])
+      }))
+    } else {
+      const pullRequestResponses = await Promise.all(validBranches.map(branch =>
+        getAssociatedPullRequests(context.github, {
+          owner: context.payload.repository.owner.login,
+          repo: context.payload.repository.name,
+          branchName: branch.name
+        })
+      ))
+
+      const pullRequests = flatten(pullRequestResponses)
+      app.log.debug('Found pull requests: ', pullRequests)
+      await Promise.all(pullRequests.map(pullRequest => {
+        const repositoryReference = {
+          owner: pullRequest.owner,
+          repo: pullRequest.repo
+        }
+        app.log.debug('handlePullRequests')
+        return handlePullRequests(app, context, context.payload.installation.id, repositoryReference, [pullRequest.number])
+      }))
+    }
+
   })
 
   app.on([
