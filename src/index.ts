@@ -155,7 +155,7 @@ export = (app: Application) => {
     app.log.debug('Result:::::::::::::::::')
     app.log.debug(result)
     if (!result.data) { return [] }
-    return result.data.repository.ref.associatedPullRequests.nodes.map((node: any) => ({
+    return result.data.repository.object.associatedPullRequests.nodes.map((node: any) => ({
       number: node.number,
       repo: node.repository.name,
       owner: node.repository.owner.login
@@ -172,7 +172,7 @@ export = (app: Application) => {
     const sha = context.payload.sha as string
     const validBranches = branches.filter(branch => branch.name !== 'master')
     const iter = [1]
-    app.log.debug('getAssociatedPullRequests', branches)
+    app.log.debug('all branches:', branches)
     app.log.debug('valid branches: ', validBranches)
 
     if (Object(validBranches).length === 0) {
