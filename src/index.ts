@@ -166,7 +166,7 @@ export = (app: Application) => {
     'status'
   ], async context => {
     app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
-    app.log.debug('version: 1.1.3')
+    app.log.debug('version: 1.1.4')
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
     const sha = context.payload.sha as string
