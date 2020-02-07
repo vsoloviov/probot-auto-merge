@@ -171,15 +171,18 @@ export = (app: Application) => {
     const branches = context.payload.branches as { name: string }[]
     const sha = context.payload.sha as string
     const validBranches = branches.filter(branch => branch.name !== 'master')
+    const iter = [1]
     app.log.debug('getAssociatedPullRequests', branches)
     app.log.debug('valid branches: ', validBranches)
 
     if (Object(validBranches).length === 0) {
-      const pullRequestResponses = getAssociatedPullRequestsFork(context.github, {
-        owner: context.payload.commit.author.login,
-        repo: context.payload.repository.name,
-        sha: sha
-      })
+      const pullRequestResponses = await Promise.all(iter.map(i =>
+        getAssociatedPullRequestsFork(context.github, {
+          owner: context.payload.commit.author.login,
+          repo: context.payload.repository.name,
+          sha: sha
+        })
+      ))
 
       const pullRequests = flatten(pullRequestResponses)
       app.log.debug('Found pull requests: ', pullRequests)
