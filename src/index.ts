@@ -128,7 +128,7 @@ export = (app: Application) => {
   async function getAssociatedPullRequestsFork (github: GitHubAPI, { owner, repo, sha }: { owner: String, repo: string, sha: string }): Promise<{ owner: string, repo: string, number: number }[]> {
     app.log.debug('Querying results fork...............')
     const result = await rawGraphQLQuery(github, `
-      query($owner: String!, $repo: String!, $sha: String!) {
+      query($owner: String!, $repo: String!, $sha: GitObjectID!) {
         repository(owner: $owner, name: $repo) {
           object(oid: $sha) {
             ... on Commit {
@@ -166,7 +166,7 @@ export = (app: Application) => {
     'status'
   ], async context => {
     app.log.debug("CONTEXT IS HERE:::::::::::::::::::::::::::::::::::::::")
-    app.log.debug('version: 1.1.2')
+    app.log.debug('version: 1.1.3')
     app.log.debug(context)
     const branches = context.payload.branches as { name: string }[]
     const sha = context.payload.sha as string
