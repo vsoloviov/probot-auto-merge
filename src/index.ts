@@ -143,9 +143,9 @@ export = (app: Application) => {
     if (typeof branches[0] !== 'undefined') {
       iter = (branches[0].name === 'master') ? [] : [1]
     }
-    const owner = (Object(branches).length === 0)
-      ? context.payload.commit.author.login
-      : context.payload.repository.owner.login
+    const owner = (context.payload.commit.author.login === null)
+      ? context.payload.repository.owner.login
+      : context.payload.commit.author.login
     const pullRequestResponses = await Promise.all(iter.map(i =>
       getAssociatedPullRequests(context.github, {
         owner: owner,
